@@ -51,6 +51,8 @@ def parseShows(xConfig):
             pathtd = xConfig.get(show, 'PathToDownload')
         except ConfigParser.NoOptionError:
             pathtd = '/'.join([xConfig.get('General', 'DefDownloadPath'), show, str(season), str(episode), ''])
+            
+        xConfig.set(show, 'PathToDownload', pathtd)    
         showDic[show] = {'Season' : season, 'Episode': episode, 'Quality' : quality, 'Path' : pathtd.replace('\\', '/')}
 
     return showDic
@@ -63,34 +65,54 @@ def fetchLinks(content):
     for release in content.getElementsByTagName("item"):
             for node in release.childNodes:
                 if node.nodeName == "title":
-                    title = node.firstChild.wholeText
+                    releases = node.firstChild.wholeText
                 if node.nodeName == "description":
-                    links = []
+                    titles = releases.split('&')
                     linksContent = node.firstChild.wholeText
-                    match = reggi.search(linksContent) 
-                    if match == None:
-                        break
-                    matches = re.finditer("href=\"(.*?)\"", match.group("urls"))
-                    for match in matches:
-                        links.append(match.group(1))
-                    dict_r[title] = links
-
+                    
+                    for title in titles:
+                        links = []
+                        
+                        matchi = reggi.search(linksContent)
+                        if matchi == None:
+                            break
+                        
+                        matchers = re.finditer("href=\"(.*?)\"", matchi.group("urls"))
+                        for match in matchers:
+                            links.append(match.group(1))
+                            
+                        dict_r[title.strip()] = links
+                        linksContent = linksContent[matchi.end()::]
     return dict_r
+
+def parseTitle(title):
+    tvregex = re.compile('(?P<show>.*)S(?P<season>[0-9]{2})E(?P<episode>[0-9]{2}).(?P<quality>.*)[\.-]',re.IGNORECASE)
+    matobj = tvregex.match(title)
+    if matobj is None:
+        return None
+    (name, season, episode, quality) = matobj.groups()
+    name = name.replace('.', ' ').replace('repack', '').replace('proper', '').strip().lower()
+    quality = quality.lower()
+    return (name, season, episode, quality)
     
 def shouldDownload(config, allowedDic, title):
-    (showName, seasonn, episoden, quality) = parseTitle(title)
+    try:
+        (showName, seasonn, episoden, quality) = parseTitle(title)
+    except TypeError:
+        return False
+    
     for showTitle, showDict in allowedDic.iteritems():
-        if showTitle != showName:
+        if showTitle.lower() != showName:
             continue
         if showDict['Season'] < int(seasonn):
             continue
         if showDict['Episode'] < int(episoden):
             continue
         if showDict['Quality'].lower() == 'hdtv':
-            if quality.lower() != 'hdtv':
+            if quality.contains('hdtv') and not quality.contains('web') and not quality.contains('720p') and not quality.contains('x264'):
                 continue
         else:
-            if not quality.lower().contains(showDict['Quality'].lower()):
+            if not quality.contains(showDict['Quality'].lower()):
                 continue
         config.set(showTitle, 'Season', seasonn)
         config.set(showTitle, 'Episode', episoden)
@@ -106,30 +128,34 @@ def findIDM():
     except WindowsError:
         return None
 
-config = ConfigParser.SafeConfigParser()
+if __name__ == '__main__':
+    config = ConfigParser.SafeConfigParser()
 
-#Set ini file to its initial state
-initialize(config)
+    #Set ini file to its initial state
+    initialize(config)
 
-#Parse TV Shows
-showDic = parseShows(config)
-print showDic
-exit(-1)
-#NotJustYet
-h = httplib2.Http(".cache")
-resp, content = h.request("http://www.oneddl.com/feed/rss/", "GET")
-newcontent = parseString(content)
-linksdict = fetchLinks(newcontent)
+    #Parse TV Shows
+    showDic = parseShows(config)
+    #print showDic
+    #exit(-1)
+    #NotJustYet
+    h = httplib2.Http(".cache")
+    resp, content = h.request("http://www.oneddl.com/feed/rss/", "GET")
+    newcontent = parseString(content)
+    linksdict = fetchLinks(newcontent)
+    print linksdict
+    exit(-1)
 
-print '%d downloads found.' % len(linksdict)
+    print '%d downloads found.' % len(linksdict)
 
-#Match 'em
-print 'Finding matching downloads...'
-updatedDict = dict([(links,showDic[title]['Path']) for title,links in linksdict.iteritems() if shouldDownload(config, showDic, title)])
-print '%d matching downloads have been found.' % len(updatedLinks)
+    #Match 'em
+    print 'Finding matching downloads...'
+    updatedDict = dict([(links,showDic[title]['Path']) for title,links in linksdict.iteritems() if shouldDownload(config, showDic, title)])
+    print '%d matching downloads have been found.' % len(updatedDict)
 
-with open('OneDDL.ini', 'wb') as fp:
-    config.write(fp)
-    
-multipattern = "<div id=\"downloadbutton_\" style=\"\"><a href=\"(.*?)\" onclick=\"launchpopunder\(\)\;\">"
-LinkAdder(config.get('General', 'IDMPath'), multipattern).start(updatedDict.iteritems())
+    with open('OneDDL.ini', 'wb') as fp:
+        config.write(fp)
+
+    if len(updatedDict) != 0:
+        multipattern = "<div id=\"downloadbutton_\" style=\"\"><a href=\"(.*?)\" onclick=\"launchpopunder\(\)\;\">"
+        LinkAdder(config.get('General', 'IDMPath'), multipattern).start(updatedDict.iteritems())
