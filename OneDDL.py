@@ -104,9 +104,9 @@ def shouldDownload(config, allowedDic, title):
     for showTitle, showDict in allowedDic.iteritems():
         if showTitle.lower() != showName:
             continue
-        if showDict['Season'] < int(seasonn):
+        if int(seasonn) < showDict['Season']:
             continue
-        if showDict['Episode'] < int(episoden):
+        if int(episoden) < showDict['Episode']:
             continue
         if showDict['Quality'].lower() == 'hdtv':
             if quality.find('hdtv') != -1 and quality.find('web') == -1 and quality.find('720p') == -1 and quality.find('x264') == -1:
