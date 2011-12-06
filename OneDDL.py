@@ -109,10 +109,10 @@ def shouldDownload(config, allowedDic, title):
         if showDict['Episode'] < int(episoden):
             continue
         if showDict['Quality'].lower() == 'hdtv':
-            if quality.contains('hdtv') and not quality.contains('web') and not quality.contains('720p') and not quality.contains('x264'):
+            if quality.find('hdtv') != -1 and quality.find('web') == -1 and quality.find('720p') == -1 and quality.find('x264') == -1:
                 continue
         else:
-            if not quality.contains(showDict['Quality'].lower()):
+            if quality.find(showDict['Quality'].lower()) == -1:
                 continue
         config.set(showTitle, 'Season', seasonn)
         config.set(showTitle, 'Episode', episoden)
@@ -143,12 +143,7 @@ if __name__ == '__main__':
     resp, content = h.request("http://www.oneddl.com/feed/rss/", "GET")
     newcontent = parseString(content)
     linksdict = fetchLinks(newcontent)
-<<<<<<< HEAD
     #print linksdict
-=======
-    print linksdict
->>>>>>> origin/master
-    exit(-1)
 
     print '%d downloads found.' % len(linksdict)
 
