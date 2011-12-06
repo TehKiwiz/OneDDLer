@@ -35,8 +35,6 @@ def initialize(config):
         pathd = raw_input('--> ')
         config.set('General', 'DefDownloadPath', pathd)
 
-    return config
-
 def parseShows(xConfig):
     showDic = {}
     shows = [x for x in xConfig.sections() if x != 'General']
@@ -76,8 +74,10 @@ def fetchLinks(content):
                     for match in matches:
                         links.append(match.group(1))
                     dict_r[title] = links
+
+    return dict_r
     
-def shouldDownload(title):
+def shouldDownload(config, allowedDic, title):
     #NotImplementedYet
     return true
 
@@ -93,7 +93,7 @@ def findIDM():
 config = ConfigParser.SafeConfigParser()
 
 #Set ini file to its initial state
-config = initialize(config)
+initialize(config)
 
 #Parse TV Shows
 showDic = parseShows(config)
@@ -105,7 +105,13 @@ resp, content = h.request("http://www.oneddl.com/feed/rss/", "GET")
 newcontent = parseString(content)
 linksdict = fetchLinks(newcontent)
 
-print '%s downloads found.' % len(linksdict)
+print '%d downloads found.' % len(linksdict)
+
+#Match 'em
+print 'Finding matching downloads...'
+updatedLinks = [link for title,link in linksdict.iteritems() if shouldDownload(config, showDic, title)]
+print '%d matching downloads have been found.' % len(updatedLinks)
+
 with open('OneDDL.ini', 'wb') as fp:
     config.write(fp)
     
