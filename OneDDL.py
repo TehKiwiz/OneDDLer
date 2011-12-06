@@ -78,8 +78,24 @@ def fetchLinks(content):
     return dict_r
     
 def shouldDownload(config, allowedDic, title):
-    #NotImplementedYet
-    return true
+    (showName, seasonn, episoden, quality) = parseTitle(title)
+    for showTitle, showDict in allowedDic.iteritems():
+        if showTitle != showName:
+            continue
+        if showDict['Season'] < int(seasonn):
+            continue
+        if showDict['Episode'] < int(episoden):
+            continue
+        if showDict['Quality'].lower() == 'hdtv':
+            if quality.lower() != 'hdtv':
+                continue
+        else:
+            if not quality.lower().contains(showDict['Quality'].lower()):
+                continue
+        config.set(showTitle, 'Season', seasonn)
+        config.set(showTitle, 'Episode', episoden)
+        return True
+    return False
 
 def findIDM():
     try:
@@ -116,4 +132,4 @@ with open('OneDDL.ini', 'wb') as fp:
     config.write(fp)
     
 multipattern = "<div id=\"downloadbutton_\" style=\"\"><a href=\"(.*?)\" onclick=\"launchpopunder\(\)\;\">"
-LinkAdder(pathi, multipattern).start(linksdict.itervalues())
+LinkAdder(config.get('General', 'IDMPath'), multipattern).start(linksdict.itervalues())
