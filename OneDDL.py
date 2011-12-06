@@ -106,30 +106,31 @@ def findIDM():
     except WindowsError:
         return None
 
-config = ConfigParser.SafeConfigParser()
+if __name__ == '__main__':
+    config = ConfigParser.SafeConfigParser()
 
-#Set ini file to its initial state
-initialize(config)
+    #Set ini file to its initial state
+    initialize(config)
 
-#Parse TV Shows
-showDic = parseShows(config)
-print showDic
-exit(-1)
-#NotJustYet
-h = httplib2.Http(".cache")
-resp, content = h.request("http://www.oneddl.com/feed/rss/", "GET")
-newcontent = parseString(content)
-linksdict = fetchLinks(newcontent)
+    #Parse TV Shows
+    showDic = parseShows(config)
+    print showDic
+    exit(-1)
+    #NotJustYet
+    h = httplib2.Http(".cache")
+    resp, content = h.request("http://www.oneddl.com/feed/rss/", "GET")
+    newcontent = parseString(content)
+    linksdict = fetchLinks(newcontent)
 
-print '%d downloads found.' % len(linksdict)
+    print '%d downloads found.' % len(linksdict)
 
-#Match 'em
-print 'Finding matching downloads...'
-updatedDict = dict([(links,showDic[title]['Path']) for title,links in linksdict.iteritems() if shouldDownload(config, showDic, title)])
-print '%d matching downloads have been found.' % len(updatedLinks)
+    #Match 'em
+    print 'Finding matching downloads...'
+    updatedDict = dict([(links,showDic[title]['Path']) for title,links in linksdict.iteritems() if shouldDownload(config, showDic, title)])
+    print '%d matching downloads have been found.' % len(updatedLinks)
 
-with open('OneDDL.ini', 'wb') as fp:
-    config.write(fp)
-    
-multipattern = "<div id=\"downloadbutton_\" style=\"\"><a href=\"(.*?)\" onclick=\"launchpopunder\(\)\;\">"
-LinkAdder(config.get('General', 'IDMPath'), multipattern).start(updatedDict.iteritems())
+    with open('OneDDL.ini', 'wb') as fp:
+        config.write(fp)
+        
+    multipattern = "<div id=\"downloadbutton_\" style=\"\"><a href=\"(.*?)\" onclick=\"launchpopunder\(\)\;\">"
+    LinkAdder(config.get('General', 'IDMPath'), multipattern).start(updatedDict.iteritems())
