@@ -139,10 +139,11 @@ if __name__ == '__main__':
     #print showDic
     #exit(-1)
     #NotJustYet
-    h = httplib2.Http(".cache")
+    h = httplib2.Http()
     resp, content = h.request("http://www.oneddl.com/feed/rss/", "GET")
     newcontent = parseString(content)
     linksdict = fetchLinks(newcontent)
+    #print linksdict
     #print linksdict
 
     print '%d downloads found.' % len(linksdict)
