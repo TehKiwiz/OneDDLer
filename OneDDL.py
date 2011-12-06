@@ -50,7 +50,7 @@ def parseShows(xConfig):
         try:
             pathtd = xConfig.get(show, 'PathToDownload')
         except ConfigParser.NoOptionError:
-            pathtd = '/'.join([xConfig.get('General', 'DefDownloadPath'), show, str(season), str(episode), ''])
+            pathtd = '/'.join([xConfig.get('General', 'DefDownloadPath'), show, ''])
             
         xConfig.set(show, 'PathToDownload', pathtd)    
         showDic[show] = {'Season' : season, 'Episode': episode, 'Quality' : quality, 'Path' : pathtd.replace('\\', '/')}
