@@ -143,7 +143,11 @@ if __name__ == '__main__':
     resp, content = h.request("http://www.oneddl.com/feed/rss/", "GET")
     newcontent = parseString(content)
     linksdict = fetchLinks(newcontent)
+<<<<<<< HEAD
     #print linksdict
+=======
+    print linksdict
+>>>>>>> origin/master
     exit(-1)
 
     print '%d downloads found.' % len(linksdict)
