@@ -53,7 +53,7 @@ def parseShows(xConfig):
             pathtd = '/'.join([xConfig.get('General', 'DefDownloadPath'), show, str(season), str(episode), ''])
             
         xConfig.set(show, 'PathToDownload', pathtd)    
-        showDic[show] = {'Season' : season, 'Episode': episode, 'Quality' : quality, 'Path' : pathtd.replace('\\', '/')}
+        showDic[show.lower()] = {'Season' : season, 'Episode': episode, 'Quality' : quality, 'Path' : pathtd.replace('\\', '/')}
 
     return showDic
 
@@ -99,7 +99,7 @@ def shouldDownload(config, allowedDic, title):
     try:
         (showName, seasonn, episoden, quality) = parseTitle(title)
     except TypeError:
-        return False
+        return None
     
     for showTitle, showDict in allowedDic.iteritems():
         if showTitle.lower() != showName:
@@ -116,8 +116,8 @@ def shouldDownload(config, allowedDic, title):
                 continue
         config.set(showTitle, 'Season', seasonn)
         config.set(showTitle, 'Episode', episoden)
-        return True
-    return False
+        return allowedDic[showTitle]['Path']
+    return None
 
 def findIDM():
     try:
@@ -149,7 +149,12 @@ if __name__ == '__main__':
 
     #Match 'em
     print 'Finding matching downloads...'
-    updatedDict = dict([(links,showDic[title]['Path']) for title,links in linksdict.iteritems() if shouldDownload(config, showDic, title)])
+    updatedDict = {}
+    for title, links in linksdict.iteritems():
+        path = shouldDownload(config, showDic, title)
+        if path != None:
+            updatedDict[links] = path
+    
     print '%d matching downloads have been found.' % len(updatedDict)
 
     with open('OneDDL.ini', 'wb') as fp:
