@@ -105,9 +105,9 @@ resp, content = h.request("http://www.oneddl.com/feed/rss/", "GET")
 newcontent = parseString(content)
 linksdict = fetchLinks(newcontent)
 
-print '%s downloads found.' % len(dict_r)
+print '%s downloads found.' % len(linksdict)
 with open('OneDDL.ini', 'wb') as fp:
     config.write(fp)
     
 multipattern = "<div id=\"downloadbutton_\" style=\"\"><a href=\"(.*?)\" onclick=\"launchpopunder\(\)\;\">"
-LinkAdder(pathi, multipattern).start(dict_r.itervalues())
+LinkAdder(pathi, multipattern).start(linksdict.itervalues())
