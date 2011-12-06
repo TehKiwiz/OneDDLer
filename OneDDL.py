@@ -19,7 +19,6 @@ def initialize(config):
     except ConfigParser.NoOptionError:
         value = ''
     if value.strip() == '' or not os.path.isfile(value):
-        print 'lol'
         pathi = findIDM()
         if pathi is None:
             print 'Couldn\' find IDM'
@@ -53,8 +52,8 @@ def parseShows(xConfig):
         try:
             pathtd = xConfig.get(show, 'PathToDownload')
         except ConfigParser.NoOptionError:
-            pathtd = xConfig.get('General', 'DefDownloadPath')
-        showDic[show] = dict('Season' : season, 'Episode': episode, 'Quality' : quality, 'Path' : pathtd)
+            pathtd = '/'.join([xConfig.get('General', 'DefDownloadPath'), show, str(season), str(episode), ''])
+        showDic[show] = {'Season' : season, 'Episode': episode, 'Quality' : quality, 'Path' : pathtd.replace('\\', '/')}
 
     return showDic
                     
@@ -79,6 +78,7 @@ config = initialize(config)
 #Parse TV Shows
 showDic = parseShows(config)
 
+exit(-1)
 #NotJustYet
 h = httplib2.Http(".cache")
 resp, content = h.request("http://www.oneddl.com/feed/rss/", "GET")
