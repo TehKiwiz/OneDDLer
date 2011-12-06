@@ -10,11 +10,11 @@ import subprocess
 
 class LinkAdder:
     def __init__(self, path, pattern):
-        self.__path = path
+        self.__idmpath = path
         self.__pattern = pattern
         self.__lock = threading.Lock()
         
-    def addLink(self, tehlink, whereidm):
+    def addLink(self, tehlink, path, whereidm):
         try:
             content = urllib2.urlopen(tehlink).read()
             match  = re.search(self.__pattern,content)
@@ -25,15 +25,15 @@ class LinkAdder:
                 self.__lock.acquire()
                 print 'Added', link[link.rfind('/')+1::]
                 self.__lock.release()
-                command = '"%s" /n /a /d "%s"' % (whereidm, link.replace(":81", ""))
+                command = '"%s" /n /a /p "%s" /d "%s"' % (whereidm, path, link.replace(":81", ""))
                 subprocess.call(command)
         except:
             pass
         
     def start(self, itere):
-        for links in itere:
+        for links,path in itere:
             for link in links:
-                threading.Thread(target=self.addLink, args=(link,self.__path)).start()
+                threading.Thread(target=self.addLink, args=(link,path,self.__idmpath)).start()
  
         for thread in threading.enumerate():
             if thread is not threading.currentThread():
