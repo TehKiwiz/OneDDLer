@@ -1,11 +1,12 @@
-#import httplib2
-#import urllib
-import httplib2
+from sys import *
 from LinkAdder import *
+from xml.dom.minidom import parse, parseString
+
+import os
 import re
+import httplib2
 import ConfigParser
 import _winreg
-from xml.dom.minidom import parse, parseString
 
 def shouldDownload(title):
     #NotImplementedYet
@@ -20,11 +21,43 @@ def findIDM():
     except WindowsError:
         return None
 
-pathi = findIDM()
-if pathi is None:
-    print 'Couldn\' find IDM'
-    system.exit(-1)
+config = ConfigParser.SafeConfigParser()
+config.read('OneDDL.ini')
+if not config.has_section('General'):
+    config.add_section('General')
+
+#Find IDM and add to config
+try:
+    value = config.get('General', 'IDMPath')
+except ConfigParser.NoOptionError:
+    value = ''
+if value.strip()s == '' or not os.path.isfile(value):
+    print 'lol'
+    pathi = findIDM()
+    if pathi is None:
+        print 'Couldn\' find IDM'
+        exit(-1)
+    config.set('General', 'IDMPath', pathi)
+
+#Get default download path, root folder for downloads
+try:
+    value = config.get('General', 'DefDownloadPath')
+except ConfigParser.NoOptionError:
+    value = ''
+if value.strip() == '':
+    print 'hai'
+    print 'Please enter the default download path (eg: D:/Lol/Crap/)'
+    pathd = raw_input('--> ')
+    config.set('General', 'DefDownloadPath', pathd) 
+
+#Parse TV Shows
+#NotJustYet
     
+with open('OneDDL.ini', 'wb') as fp:
+    config.write(fp)
+
+#exit(0)
+
 h = httplib2.Http(".cache")
 resp, content = h.request("http://www.oneddl.com/feed/rss/", "GET")
 newcontent = parseString(content)
