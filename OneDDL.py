@@ -56,7 +56,27 @@ def parseShows(xConfig):
         showDic[show] = {'Season' : season, 'Episode': episode, 'Quality' : quality, 'Path' : pathtd.replace('\\', '/')}
 
     return showDic
-                    
+
+def fetchLinks(content):
+    reggi = re.compile("Multiupload\s*(?P<urls>(<a href=\".*?\".*?>.*?</a>\s*)+)", re.IGNORECASE)
+    dict_r = {}
+
+    print 'Fetching links from OneDDL.com'
+    for release in content.getElementsByTagName("item"):
+            for node in release.childNodes:
+                if node.nodeName == "title":
+                    title = node.firstChild.wholeText
+                if node.nodeName == "description":
+                    links = []
+                    linksContent = node.firstChild.wholeText
+                    match = reggi.search(linksContent) 
+                    if match == None:
+                        break
+                    matches = re.finditer("href=\"(.*?)\"", match.group("urls"))
+                    for match in matches:
+                        links.append(match.group(1))
+                    dict_r[title] = links
+    
 def shouldDownload(title):
     #NotImplementedYet
     return true
@@ -83,24 +103,7 @@ exit(-1)
 h = httplib2.Http(".cache")
 resp, content = h.request("http://www.oneddl.com/feed/rss/", "GET")
 newcontent = parseString(content)
-reggi = re.compile("Multiupload\s*(?P<urls>(<a href=\".*?\".*?>.*?</a>\s*)+)", re.IGNORECASE)
-dict_r = {}
-
-print 'Fetching links from OneDDL.com'
-for release in newcontent.getElementsByTagName("item"):
-        for node in release.childNodes:
-            if node.nodeName == "title":
-                title = node.firstChild.wholeText
-            if node.nodeName == "description":
-                links = []
-                linksContent = node.firstChild.wholeText
-                match = reggi.search(linksContent) 
-                if match == None:
-                    break
-                matches = re.finditer("href=\"(.*?)\"", match.group("urls"))
-                for match in matches:
-                    links.append(match.group(1))
-                dict_r[title] = links
+linksdict = fetchLinks(newcontent)
 
 print '%s downloads found.' % len(dict_r)
 with open('OneDDL.ini', 'wb') as fp:
