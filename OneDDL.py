@@ -53,7 +53,7 @@ def parseShows(xConfig):
             pathtd = '/'.join([xConfig.get('General', 'DefDownloadPath'), show, str(season), str(episode), ''])
             
         xConfig.set(show, 'PathToDownload', pathtd)    
-        showDic[show.lower()] = {'Season' : season, 'Episode': episode, 'Quality' : quality, 'Path' : pathtd.replace('\\', '/')}
+        showDic[show] = {'Season' : season, 'Episode': episode, 'Quality' : quality, 'Path' : pathtd.replace('\\', '/')}
 
     return showDic
 
@@ -115,7 +115,7 @@ def shouldDownload(config, allowedDic, title):
             if quality.find(showDict['Quality'].lower()) == -1:
                 continue
         config.set(showTitle, 'Season', seasonn)
-        config.set(showTitle, 'Episode', episoden)
+        config.set(showTitle, 'Episode', str(int(episoden)+1))
         return allowedDic[showTitle]['Path']
     return None
 
@@ -153,7 +153,7 @@ if __name__ == '__main__':
     for title, links in linksdict.iteritems():
         path = shouldDownload(config, showDic, title)
         if path != None:
-            updatedDict[links] = path
+            updatedDict[path] = links
     
     print '%d matching downloads have been found.' % len(updatedDict)
 

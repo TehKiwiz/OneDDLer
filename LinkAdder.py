@@ -28,19 +28,24 @@ class LinkAdder:
                 command = '"%s" /n /a /p "%s" /d "%s"' % (whereidm, path, link.replace(":81", ""))
                 subprocess.call(command)
         except:
-            pass
+            self.__lock.acquire()
+            print 'Couldn\'t add link for some reason.'
+            self.__lock.release()
         
     def start(self, itere):
-        for links,path in itere:
+        threads = []
+        
+        for path,links in itere:
             for link in links:
-                threading.Thread(target=self.addLink, args=(link,path,self.__idmpath)).start()
- 
-        for thread in threading.enumerate():
-            if thread is not threading.currentThread():
+                tempt = threading.Thread(target=self.addLink, args=(link,path,self.__idmpath))
+                threads.append(tempt)
+                tempt.start()
+    
+        for thread in threads:
                 thread.join()
-
+        
         print 'All links have been added'
-        command = '"%s" /s' % self.__path
+        command = '"%s" /s' % self.__idmpath
         subprocess.call(command)
         print 'Queue started'
         return 0
