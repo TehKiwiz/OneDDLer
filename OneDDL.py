@@ -106,7 +106,7 @@ def parseShowsConfig(xConfig):
         #logging.debug('Download path for %s is %s' % (show, pathtd))
         xConfig.set(show, 'PathToDownload', pathtd)    
         showDic[show] = {'Season' : season, 'Episode': episode, 'Quality' : quality, 'Path' : pathtd.replace('\\', '/')}
-
+    print 'Loaded %d shows from config.' % len(showDic.keys())
     logging.debug('Parsing shows: completed')
     return showDic
 
@@ -115,6 +115,7 @@ def parseShowsRss(xConfig, rss_feed):
     dict_r = {}
     reg = re.compile('(\\d+)x(\\d+)')
     dirManager = FolderManagment(xConfig.get('General', 'main_folder'))
+    cnt = 0
     
     for item in rss_feed.getElementsByTagName('item'):
         for node in item.childNodes:
@@ -147,7 +148,9 @@ def parseShowsRss(xConfig, rss_feed):
                 xConfig.set(title, 'Episode', str(episode-1))
                 xConfig.set(title, 'Quality', xConfig.get('General', 'defquality'))
                 xConfig.set(title, 'pathtodownload', dirManager.get_folder(title))
+                cnt = cnt + 1
                 break
+    print 'Loaded %d shows from Next-Episode.' % cnt
     logging.debug('Parsing NE RSS: completed')
             
 def fetchLinks(content):
