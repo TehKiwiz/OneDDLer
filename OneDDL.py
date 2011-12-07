@@ -33,14 +33,17 @@ def initialize(config):
 
     #Get default download path, root folder for downloads
     try:
-        value = config.get('General', 'DefDownloadPath')
+        pathd = config.get('General', 'DefDownloadPath')
     except ConfigParser.NoOptionError:
-        value = ''
-    if value.strip() == '':
+        pathd = ''
+    if pathd.strip() == '':
         print 'Please enter the default download path (eg: D:/Lol/Crap/)'
         pathd = raw_input('--> ')
         logging.debug('Received default download path => %s' % pathd)
-        config.set('General', 'DefDownloadPath', pathd)
+        
+    while pathd.rfind('/') == len(pathd)-1 or pathd.rfind('\\') == len(pathd)-1:
+        pathd = pathd[:len(pathd)-1]
+    config.set('General', 'DefDownloadPath', pathd)
 
     try:
         value = config.get('General', 'DefQuality')
@@ -100,7 +103,7 @@ def parseShowsConfig(xConfig):
         except ConfigParser.NoOptionError:
             pathtd = '/'.join([xConfig.get('General', 'DefDownloadPath'), show, ''])
 
-        logging.debug('Download path for %s is %s' % (show, unicode(pathtd)))
+        logging.debug('Download path for %s is %s' % (show, pathtd))
         xConfig.set(show, 'PathToDownload', pathtd)    
         showDic[show] = {'Season' : season, 'Episode': episode, 'Quality' : quality, 'Path' : pathtd.replace('\\', '/')}
 
