@@ -189,7 +189,6 @@ if __name__ == '__main__':
             updatedDict[show] = (path, links)
     
     print '%d matching downloads have been found.' % len(updatedDict)
-    print updatedDict.iteritems()
 
     with open('OneDDL.ini', 'wb') as fp:
         config.write(fp)
