@@ -12,7 +12,6 @@ class LinkAdder:
     def __init__(self, path, pattern):
         self.__idmpath = path
         self.__pattern = pattern
-        self.__lock = threading.Lock()
         
     def addLink(self, tehlink, path, whereidm):
         try:
@@ -24,14 +23,9 @@ class LinkAdder:
                 link = match.group(1)
                 command = '"%s" /n /a /p "%s" /d "%s"' % (whereidm, path, link.replace(":81", ""))
                 code = subprocess.call(command)
-                
-                self.__lock.acquire()
                 logging.debug('Added %s. IDM Add call result: %d' % (link[link.rfind('/')+1::], code))
-                self.__lock.release()
         except:
-            self.__lock.acquire()
             logging.debug('Couldn\'t add link for some reason.')
-            self.__lock.release()
         
     def start(self, itere):
         threads = []
