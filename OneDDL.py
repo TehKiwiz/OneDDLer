@@ -103,7 +103,7 @@ def parseShowsConfig(xConfig):
         except ConfigParser.NoOptionError:
             pathtd = '/'.join([xConfig.get('General', 'DefDownloadPath'), show, ''])
 
-        logging.debug('Download path for %s is %s' % (show, pathtd))
+        #logging.debug('Download path for %s is %s' % (show, pathtd))
         xConfig.set(show, 'PathToDownload', pathtd)    
         showDic[show] = {'Season' : season, 'Episode': episode, 'Quality' : quality, 'Path' : pathtd.replace('\\', '/')}
 
@@ -121,7 +121,8 @@ def parseShowsRss(xConfig, rss_feed):
             if node.nodeName == 'title':
                 index = node.firstChild.wholeText.find('-')
                 if index != -1:
-                    title = node.firstChild.wholeText[:index].strip().capitalize()
+                    title = node.firstChild.wholeText[:index].strip()
+                    title = ' '.join([x.capitalize() for x in title.split(' ')]).replace('\'', '').replace(':', '')
                     logging.debug('Found show in watchlist: %s' % title)
                 else:
                     break
