@@ -35,6 +35,30 @@ def initialize(config):
         pathd = raw_input('--> ')
         config.set('General', 'DefDownloadPath', pathd)
 
+    try:
+        value = config.get('General', 'DefQuality')
+    except ConfigParser.NoOptionError:
+        value = ''
+    if value.strip() == '':
+        print 'Please enter the default quality of the episodes: (Currently only accepts 720p/web/hdtv)'
+        qual = raw_input('--> ')
+        config.set('General', 'DefQuality', qual)
+
+    try:
+        value = config.get('General', 'ne_rss')
+    except ConfigParser.NoOptionError:
+        value = ''
+        
+    if value.strip() == '':
+        print 'Would you like to import your next-episode watchlist?'
+        shouldImport = raw_input('y/n: ')
+        if shouldImport == 'y':
+            print 'Enter your watchlist rss feed url (You can find it at http://next-episode.net/sitefeeds/)'
+            url = raw_input('--> ')
+        else:
+            url = 'false'
+        config.set('General', 'ne_rss', url)
+
 def parseShowsConfig(xConfig):
     showDic = {}
     shows = [x for x in xConfig.sections() if x != 'General']
@@ -57,30 +81,36 @@ def parseShowsConfig(xConfig):
 
     return showDic
 
-def parseShowsRss(rss_feed):
+def parseShowsRss(xConfig, rss_feed):
     dict_r = {}
     reg = re.compile('(\\d+)x(\\d+)')
     
     for item in rss_feed.getElementsByTagName('item'):
         for node in item.childNodes:
+            if node.nodeName == 'title':
+                index = node.firstChild.wholeText.find('-')
+                if index != -1:
+                    title = node.firstChild.wholeText[:index].strip().capitalize()
+                else:
+                    break
+                if xConfig.has_section(title):
+                    break
+                xConfig.add_section(title)
+                
             if node.nodeName == 'description':
                 match = reg.search(node.firstChild.wholeText)
                 if match == None:
                     break
+                
                 season = int(match.group(1))
                 episode = int(match.group(2))
 
-                dict_r[title] = { 'Season': season, 'Episode': episode-1, 'Quality': '720p', 'Path': config.get('General', 'defdownloadpath') }
+                xConfig.set(title, 'Season', str(season))
+                xConfig.set(title, 'Episode', str(episode-1))
+                xConfig.set(title, 'Quality', xConfig.get('General', 'defquality'))
                 break
-
-            if node.nodeName == 'title':
-                if node.firstChild.wholeText.find(' - Today') != -1:
-                    title = node.firstChild.wholeText.replace(' - Today', '')
-                else:
-                    break
+    
             
-    return dict_r
-
 def fetchLinks(content):
     reggi = re.compile("Multiupload\s*(?P<urls>(<a href=\".*?\".*?>.*?</a>\s*)+)", re.IGNORECASE)
     dict_r = {}
@@ -106,7 +136,7 @@ def fetchLinks(content):
                             links.append(match.group(1))
                             
                         dict_r[title.strip()] = links
-                        linksContent = linksContent[matchi.end()::]
+                        linksContent = linksContent[matchi.end():]
     return dict_r
 
 def parseTitle(title):
@@ -128,11 +158,10 @@ def shouldDownload(config, allowedDic, title):
         if showTitle.lower() != showName:
             continue
         if int(seasonn) < showDict['Season']:
-            print 'cont2'
             continue
         if int(episoden) < showDict['Episode'] and int(seasonn) == showDict['Season']:
-            print 'cont3'
             continue
+        
         if showDict['Quality'].lower() == 'hdtv':
             if quality.find('hdtv') == -1 or quality.find('web') != -1 or quality.find('720p') != -1 or quality.find('x264') != -1:
                 continue
@@ -140,9 +169,10 @@ def shouldDownload(config, allowedDic, title):
             if quality.find(showDict['Quality'].lower()) == -1:
                 continue
         print allowedDic[showTitle]['Path']
-        if not config.has_option('General', 'ne_rss'):
-            config.set(showTitle, 'Season', seasonn)
-            config.set(showTitle, 'Episode', str(int(episoden)+1))
+        
+        config.set(showTitle, 'Season', seasonn)
+        config.set(showTitle, 'Episode', str(int(episoden)+1))
+        
         return showTitle, allowedDic[showTitle]['Path']
     return None, None
 
@@ -164,12 +194,16 @@ if __name__ == '__main__':
     #check for next-episode rss in cfg
     try:
         neRss = config.get('General', 'ne_rss')
+        if neRss == 'false':
+            raise
         resp, content = h.request(neRss, 'GET')
         content = parseString(content)
-        showDic = parseShowsRss(content)
-    except ConfigParser.NoOptionError:  
-        #Parse TV Shows
-        showDic = parseShowsConfig(config)
+        parseShowsRss(config, content)
+    except:  
+        pass
+    
+    #Parse TV Shows
+    showDic = parseShowsConfig(config)
     #print showDic
     #exit(-1)
     #NotJustYet
