@@ -9,7 +9,6 @@ import ConfigParser
 import _winreg
 
 def initialize(config):
-    print 'initializing'
     config.read('OneDDL.ini')
     if not config.has_section('General'):
         config.add_section('General')
@@ -35,7 +34,6 @@ def initialize(config):
         print 'Please enter the default download path (eg: D:/Lol/Crap/)'
         pathd = raw_input('--> ')
         config.set('General', 'DefDownloadPath', pathd)
-    print 'finished'
 
 def parseShowsConfig(xConfig):
     showDic = {}
@@ -73,12 +71,9 @@ def parseShowsRss(rss_feed):
                 episode = int(match.group(2))
 
                 dict_r[title] = { 'Season': season, 'Episode': episode-1, 'Quality': '720p', 'Path': config.get('General', 'defdownloadpath') }
-                print 'found show: ', dict_r[title]
                 break
-            #print dir(node)
-            #print node.wholeText
+
             if node.nodeName == 'title':
-                print node.firstChild.wholeText
                 if node.firstChild.wholeText.find(' - Today') != -1:
                     title = node.firstChild.wholeText.replace(' - Today', '')
                 else:
@@ -143,7 +138,7 @@ def shouldDownload(config, allowedDic, title):
         else:
             if quality.find(showDict['Quality'].lower()) == -1:
                 continue
-        print dir(config)
+
         if not config.has_option('General', 'ne_rss'):
             config.set(showTitle, 'Season', seasonn)
             config.set(showTitle, 'Episode', str(int(episoden)+1))
@@ -174,7 +169,7 @@ if __name__ == '__main__':
     except ConfigParser.NoOptionError:  
         #Parse TV Shows
         showDic = parseShowsConfig(config)
-    print showDic
+    #print showDic
     #exit(-1)
     #NotJustYet
     resp, content = h.request("http://www.oneddl.com/feed/rss/", "GET")
