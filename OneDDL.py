@@ -123,14 +123,15 @@ def shouldDownload(config, allowedDic, title):
     try:
         (showName, seasonn, episoden, quality) = parseTitle(title)
     except TypeError:
-        return None
-    
+        return None, None
     for showTitle, showDict in allowedDic.iteritems():
         if showTitle.lower() != showName:
             continue
         if int(seasonn) < showDict['Season']:
+            print 'cont2'
             continue
-        if int(episoden) < showDict['Episode']:
+        if int(episoden) < showDict['Episode'] and int(seasonn) == showDict['Season']:
+            print 'cont3'
             continue
         if showDict['Quality'].lower() == 'hdtv':
             if quality.find('hdtv') == -1 or quality.find('web') != -1 or quality.find('720p') != -1 or quality.find('x264') != -1:
@@ -138,12 +139,12 @@ def shouldDownload(config, allowedDic, title):
         else:
             if quality.find(showDict['Quality'].lower()) == -1:
                 continue
-
+        print allowedDic[showTitle]['Path']
         if not config.has_option('General', 'ne_rss'):
             config.set(showTitle, 'Season', seasonn)
             config.set(showTitle, 'Episode', str(int(episoden)+1))
-        return allowedDic[showTitle]['Path']
-    return None
+        return showTitle, allowedDic[showTitle]['Path']
+    return None, None
 
 def findIDM():
     try:
@@ -176,7 +177,6 @@ if __name__ == '__main__':
     newcontent = parseString(content)
     linksdict = fetchLinks(newcontent)
     #print linksdict
-    #print linksdict
 
     print '%d downloads found.' % len(linksdict)
 
@@ -184,11 +184,12 @@ if __name__ == '__main__':
     print 'Finding matching downloads...'
     updatedDict = {}
     for title, links in linksdict.iteritems():
-        path = shouldDownload(config, showDic, title)
-        if path != None:
-            updatedDict[path] = links
+        show, path = shouldDownload(config, showDic, title)
+        if path != None and show != None:
+            updatedDict[show] = (path, links)
     
     print '%d matching downloads have been found.' % len(updatedDict)
+    print updatedDict.iteritems()
 
     with open('OneDDL.ini', 'wb') as fp:
         config.write(fp)

@@ -35,9 +35,9 @@ class LinkAdder:
     def start(self, itere):
         threads = []
         
-        for path,links in itere:
-            for link in links:
-                tempt = threading.Thread(target=self.addLink, args=(link,path,self.__idmpath))
+        for title,info in itere:
+            for link in info[1]:
+                tempt = threading.Thread(target=self.addLink, args=(link,info[0],self.__idmpath))
                 threads.append(tempt)
                 tempt.start()
     
