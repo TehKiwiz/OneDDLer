@@ -2,7 +2,7 @@
 ##import sys
 ##nn for that
 #import mechanize
-
+import logging
 import re
 import threading
 import urllib2
@@ -22,14 +22,15 @@ class LinkAdder:
                 raise
             else:
                 link = match.group(1)
-                self.__lock.acquire()
-                print 'Added', link[link.rfind('/')+1::]
-                self.__lock.release()
                 command = '"%s" /n /a /p "%s" /d "%s"' % (whereidm, path, link.replace(":81", ""))
-                subprocess.call(command)
+                code = subprocess.call(command)
+                
+                self.__lock.acquire()
+                logging.debug('Added %s. IDM Add call result: %d' % (link[link.rfind('/')+1::], code))
+                self.__lock.release()
         except:
             self.__lock.acquire()
-            print 'Couldn\'t add link for some reason.'
+            logging.debug('Couldn\'t add link for some reason.')
             self.__lock.release()
         
     def start(self, itere):
@@ -44,8 +45,8 @@ class LinkAdder:
         for thread in threads:
                 thread.join()
         
-        print 'All links have been added'
+        print 'Valid links have been added'
         command = '"%s" /s' % self.__idmpath
-        subprocess.call(command)
+        logging.debug('IDM Start call result: %d' % subprocess.call(command))
         print 'Queue started'
         return 0

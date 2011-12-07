@@ -2,6 +2,7 @@ from sys import *
 from LinkAdder import *
 from xml.dom.minidom import parse, parseString
 
+import logging
 import os
 import re
 import httplib2
@@ -9,6 +10,8 @@ import ConfigParser
 import _winreg
 
 def initialize(config):
+    logging.debug('Initializing config')
+
     config.read('OneDDL.ini')
     if not config.has_section('General'):
         config.add_section('General')
@@ -21,7 +24,7 @@ def initialize(config):
     if value.strip() == '' or not os.path.isfile(value):
         pathi = findIDM()
         if pathi is None:
-            print 'Couldn\' find IDM'
+            logging.debug('IDM was not found')
             exit(-1)
         config.set('General', 'IDMPath', pathi)
 
@@ -33,6 +36,7 @@ def initialize(config):
     if value.strip() == '':
         print 'Please enter the default download path (eg: D:/Lol/Crap/)'
         pathd = raw_input('--> ')
+        logging.debug('Received default download path => %s' % pathd)
         config.set('General', 'DefDownloadPath', pathd)
 
     try:
@@ -42,24 +46,29 @@ def initialize(config):
     if value.strip() == '':
         print 'Please enter the default quality of the episodes: (Currently only accepts 720p/web/hdtv)'
         qual = raw_input('--> ')
+        logging.debug('Received default quality => %s' % qual)
         config.set('General', 'DefQuality', qual)
 
     try:
         value = config.get('General', 'ne_rss')
     except ConfigParser.NoOptionError:
-        value = ''
-        
+        value = ''     
     if value.strip() == '':
         print 'Would you like to import your next-episode watchlist?'
         shouldImport = raw_input('y/n: ')
         if shouldImport == 'y':
             print 'Enter your watchlist rss feed url (You can find it at http://next-episode.net/sitefeeds/)'
             url = raw_input('--> ')
+            logging.debug('User chose to use next_episode with url: %s' % url)
         else:
+            logging.debug('User chose not to use next_episode')
             url = 'false'
         config.set('General', 'ne_rss', url)
 
+    logging.debug('Done initializing')
+
 def parseShowsConfig(xConfig):
+    logging.debug('Parsing shows...')
     showDic = {}
     shows = [x for x in xConfig.sections() if x != 'General']
     for show in shows:
@@ -67,21 +76,26 @@ def parseShowsConfig(xConfig):
             season = xConfig.getint(show, 'Season')
             episode = xConfig.getint(show, 'Episode')
             quality = xConfig.get(show, 'Quality')
+            logging.debug('Parsing show %s. Season:%d, Episode:%d, Quality:%s' % (show, season, episode, quality))
+            
         except ConfigParser.NoOptionError:
-            print 'Invalid Show: ', shows
+            logging.warning('Invalid Show: %s, skipping...' % show)
             continue
 
         try:
             pathtd = xConfig.get(show, 'PathToDownload')
         except ConfigParser.NoOptionError:
             pathtd = '/'.join([xConfig.get('General', 'DefDownloadPath'), show, ''])
-            
+
+        logging.debug('Download path for %s is %s' % (show, pathtd))
         xConfig.set(show, 'PathToDownload', pathtd)    
         showDic[show] = {'Season' : season, 'Episode': episode, 'Quality' : quality, 'Path' : pathtd.replace('\\', '/')}
 
+    logging.debug('Parsing shows: completed')
     return showDic
 
 def parseShowsRss(xConfig, rss_feed):
+    logging.debug('Parsing Next-Episode\'s RSS Feed...')
     dict_r = {}
     reg = re.compile('(\\d+)x(\\d+)')
     
@@ -91,31 +105,38 @@ def parseShowsRss(xConfig, rss_feed):
                 index = node.firstChild.wholeText.find('-')
                 if index != -1:
                     title = node.firstChild.wholeText[:index].strip().capitalize()
+                    logging.debug('Found show in watchlist: %s' % title)
                 else:
                     break
                 if xConfig.has_section(title):
+                    logging.debug('Show already exists in config: %s, skipping...' % title)
                     break
+                
+                logging.debug('Adding show from watchlist to config : %s' % title)
                 xConfig.add_section(title)
                 
             if node.nodeName == 'description':
                 match = reg.search(node.firstChild.wholeText)
                 if match == None:
+                    logging.debug('Could not find episode/season for show %s in watchlist' % title)
                     break
                 
                 season = int(match.group(1))
                 episode = int(match.group(2))
 
+                logging.debug('Parsed show "%s" from RSS: Episode %d, Season %d' % (title, episode, season))
                 xConfig.set(title, 'Season', str(season))
                 xConfig.set(title, 'Episode', str(episode-1))
                 xConfig.set(title, 'Quality', xConfig.get('General', 'defquality'))
                 break
-    
+    logging.debug('Parsing NE RSS: completed')
             
 def fetchLinks(content):
     reggi = re.compile("Multiupload\s*(?P<urls>(<a href=\".*?\".*?>.*?</a>\s*)+)", re.IGNORECASE)
     dict_r = {}
 
-    print 'Fetching links from OneDDL.com'
+    logging.debug('Fetching links from OneDDL.com')
+    
     for release in content.getElementsByTagName("item"):
             for node in release.childNodes:
                 if node.nodeName == "title":
@@ -126,6 +147,7 @@ def fetchLinks(content):
                     
                     for title in titles:
                         links = []
+                        logging.debug('OneDDL.com release: %s' % title)
                         
                         matchi = reggi.search(linksContent)
                         if matchi == None:
@@ -134,22 +156,29 @@ def fetchLinks(content):
                         matchers = re.finditer("href=\"(.*?)\"", matchi.group("urls"))
                         for match in matchers:
                             links.append(match.group(1))
-                            
+
+                        logging.debug('Links for %s: %s' % (title, links))
                         dict_r[title.strip()] = links
                         linksContent = linksContent[matchi.end():]
+
+    logging.debug('Fetched links from OneDDL.com!')
     return dict_r
 
 def parseTitle(title):
+    logging.debug('Parsing release %s fetched from OneDDL' % title)
     tvregex = re.compile('(?P<show>.*)S(?P<season>[0-9]{2})E(?P<episode>[0-9]{2}).(?P<quality>.*)[\.-]',re.IGNORECASE)
     matobj = tvregex.match(title)
     if matobj is None:
+        logging.debug("Couldn't parse OneDDL release: %s" % title)
         return None
     (name, season, episode, quality) = matobj.groups()
     name = name.replace('.', ' ').replace('repack', '').replace('proper', '').strip().lower()
     quality = quality.lower()
+    logging.debug('Parsed OneDDL release %s: Name "%s", Season "%s", Episode "%s", Quality "%s"' % (title, name, season, episode, quality))
     return (name, season, episode, quality)
     
 def shouldDownload(config, allowedDic, title):
+    logging.debug('Checking release %s against show dictionary' % title)
     try:
         (showName, seasonn, episoden, quality) = parseTitle(title)
     except TypeError:
@@ -168,7 +197,9 @@ def shouldDownload(config, allowedDic, title):
         else:
             if quality.find(showDict['Quality'].lower()) == -1:
                 continue
-        print allowedDic[showTitle]['Path']
+        #print allowedDic[showTitle]['Path']
+
+        logging.debug('Match found for release %s' % title)
         
         config.set(showTitle, 'Season', seasonn)
         config.set(showTitle, 'Episode', str(int(episoden)+1))
@@ -186,6 +217,11 @@ def findIDM():
         return None
 
 if __name__ == '__main__':
+    #Start logging to file
+    logging.basicConfig(filename='OneDDL.log',level=logging.DEBUG)
+
+    logging.info('Started Job')
+    
     config = ConfigParser.SafeConfigParser()
     #Set ini file to its initial state
     initialize(config)
@@ -204,13 +240,13 @@ if __name__ == '__main__':
     
     #Parse TV Shows
     showDic = parseShowsConfig(config)
-    #print showDic
-    #exit(-1)
-    #NotJustYet
-    resp, content = h.request("http://www.oneddl.com/feed/rss/", "GET")
-    newcontent = parseString(content)
-    linksdict = fetchLinks(newcontent)
-    #print linksdict
+
+    try:
+        resp, content = h.request("http://www.oneddl.com/feed/rss/", "GET")
+        newcontent = parseString(content)
+        linksdict = fetchLinks(newcontent)
+    except httplib2.HttpLib2Error:
+        logging.exception('Something went wrong fetching a page')
 
     print '%d downloads found.' % len(linksdict)
 
@@ -229,4 +265,6 @@ if __name__ == '__main__':
 
     if len(updatedDict) != 0:
         multipattern = "<div id=\"downloadbutton_\" style=\"\"><a href=\"(.*?)\" onclick=\"launchpopunder\(\)\;\">"
+        logging.debug('Sending links to LinkAdder')
         LinkAdder(config.get('General', 'IDMPath'), multipattern).start(updatedDict.iteritems())
+    logging.info('Finished job')
