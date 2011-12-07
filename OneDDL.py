@@ -14,7 +14,8 @@ import codecs
 def initialize(config):
     logging.debug('Initializing config')
 
-    config.readfp(codecs.open('OneDDL.ini', 'rb', 'utf8'))
+    #config.readfp(codecs.open('OneDDL.ini', 'rb', 'utf8'))
+    config.read('OneDDL.ini')
     if not config.has_section('General'):
         config.add_section('General')
 
@@ -75,7 +76,7 @@ def initialize(config):
         print 'Enter your main folder which contains all the tv shows folder:'
         main_folder = raw_input(' >> ')
         config.set('General', 'main_folder', main_folder)
-        logging.debug('User chose a main_folder path: %s' % main_folder)
+        logging.debug('User chose a main_folder path.')
 
     logging.debug('Done initializing')
 
@@ -99,7 +100,7 @@ def parseShowsConfig(xConfig):
         except ConfigParser.NoOptionError:
             pathtd = '/'.join([xConfig.get('General', 'DefDownloadPath'), show, ''])
 
-        logging.debug('Download path for %s is %s' % (show, pathtd))
+        logging.debug('Download path for %s is %s' % (show, unicode(pathtd)))
         xConfig.set(show, 'PathToDownload', pathtd)    
         showDic[show] = {'Season' : season, 'Episode': episode, 'Quality' : quality, 'Path' : pathtd.replace('\\', '/')}
 
