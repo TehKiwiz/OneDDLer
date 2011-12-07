@@ -9,6 +9,7 @@ import ConfigParser
 import _winreg
 
 def initialize(config):
+    print 'initializing'
     config.read('OneDDL.ini')
     if not config.has_section('General'):
         config.add_section('General')
@@ -34,8 +35,9 @@ def initialize(config):
         print 'Please enter the default download path (eg: D:/Lol/Crap/)'
         pathd = raw_input('--> ')
         config.set('General', 'DefDownloadPath', pathd)
+    print 'finished'
 
-def parseShows(xConfig):
+def parseShowsConfig(xConfig):
     showDic = {}
     shows = [x for x in xConfig.sections() if x != 'General']
     for show in shows:
@@ -56,6 +58,33 @@ def parseShows(xConfig):
         showDic[show] = {'Season' : season, 'Episode': episode, 'Quality' : quality, 'Path' : pathtd.replace('\\', '/')}
 
     return showDic
+
+def parseShowsRss(rss_feed):
+    dict_r = {}
+    reg = re.compile('(\\d+)x(\\d+)')
+    
+    for item in rss_feed.getElementsByTagName('item'):
+        for node in item.childNodes:
+            if node.nodeName == 'description':
+                match = reg.search(node.firstChild.wholeText)
+                if match == None:
+                    break
+                season = int(match.group(1))
+                episode = int(match.group(2))
+
+                dict_r[title] = { 'Season': season, 'Episode': episode-1, 'Quality': '720p', 'Path': config.get('General', 'defdownloadpath') }
+                print 'found show: ', dict_r[title]
+                break
+            #print dir(node)
+            #print node.wholeText
+            if node.nodeName == 'title':
+                print node.firstChild.wholeText
+                if node.firstChild.wholeText.find(' - Today') != -1:
+                    title = node.firstChild.wholeText.replace(' - Today', '')
+                else:
+                    break
+            
+    return dict_r
 
 def fetchLinks(content):
     reggi = re.compile("Multiupload\s*(?P<urls>(<a href=\".*?\".*?>.*?</a>\s*)+)", re.IGNORECASE)
@@ -114,8 +143,10 @@ def shouldDownload(config, allowedDic, title):
         else:
             if quality.find(showDict['Quality'].lower()) == -1:
                 continue
-        config.set(showTitle, 'Season', seasonn)
-        config.set(showTitle, 'Episode', str(int(episoden)+1))
+        print dir(config)
+        if not config.has_option('General', 'ne_rss'):
+            config.set(showTitle, 'Season', seasonn)
+            config.set(showTitle, 'Episode', str(int(episoden)+1))
         return allowedDic[showTitle]['Path']
     return None
 
@@ -130,16 +161,22 @@ def findIDM():
 
 if __name__ == '__main__':
     config = ConfigParser.SafeConfigParser()
-
     #Set ini file to its initial state
     initialize(config)
+    h = httplib2.Http()
 
-    #Parse TV Shows
-    showDic = parseShows(config)
-    #print showDic
+    #check for next-episode rss in cfg
+    try:
+        neRss = config.get('General', 'ne_rss')
+        resp, content = h.request(neRss, 'GET')
+        content = parseString(content)
+        showDic = parseShowsRss(content)
+    except ConfigParser.NoOptionError:  
+        #Parse TV Shows
+        showDic = parseShowsConfig(config)
+    print showDic
     #exit(-1)
     #NotJustYet
-    h = httplib2.Http()
     resp, content = h.request("http://www.oneddl.com/feed/rss/", "GET")
     newcontent = parseString(content)
     linksdict = fetchLinks(newcontent)
