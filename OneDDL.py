@@ -1,5 +1,6 @@
 from sys import *
 from LinkAdder import *
+from FolderManagment import *
 from xml.dom.minidom import parse, parseString
 
 import logging
@@ -8,11 +9,12 @@ import re
 import httplib2
 import ConfigParser
 import _winreg
+import codecs
 
 def initialize(config):
     logging.debug('Initializing config')
 
-    config.read('OneDDL.ini')
+    config.readfp(codecs.open('OneDDL.ini', 'rb', 'utf8'))
     if not config.has_section('General'):
         config.add_section('General')
 
@@ -65,6 +67,16 @@ def initialize(config):
             url = 'false'
         config.set('General', 'ne_rss', url)
 
+    try:
+        value = config.get('General', 'main_folder')
+    except ConfigParser.NoOptionError:
+        value = ''
+    if value.strip() == '':
+        print 'Enter your main folder which contains all the tv shows folder:'
+        main_folder = raw_input(' >> ')
+        config.set('General', 'main_folder', main_folder)
+        logging.debug('User chose a main_folder path: %s' % main_folder)
+
     logging.debug('Done initializing')
 
 def parseShowsConfig(xConfig):
@@ -98,6 +110,7 @@ def parseShowsRss(xConfig, rss_feed):
     logging.debug('Parsing Next-Episode\'s RSS Feed...')
     dict_r = {}
     reg = re.compile('(\\d+)x(\\d+)')
+    dirManager = FolderManagment(xConfig.get('General', 'main_folder'))
     
     for item in rss_feed.getElementsByTagName('item'):
         for node in item.childNodes:
@@ -128,6 +141,7 @@ def parseShowsRss(xConfig, rss_feed):
                 xConfig.set(title, 'Season', str(season))
                 xConfig.set(title, 'Episode', str(episode-1))
                 xConfig.set(title, 'Quality', xConfig.get('General', 'defquality'))
+                xConfig.set(title, 'pathtodownload', dirManager.get_folder(title))
                 break
     logging.debug('Parsing NE RSS: completed')
             
@@ -235,7 +249,8 @@ if __name__ == '__main__':
         resp, content = h.request(neRss, 'GET')
         content = parseString(content)
         parseShowsRss(config, content)
-    except:  
+    except:
+        logging.debug('exception at %s' % __name__)
         pass
     
     #Parse TV Shows
