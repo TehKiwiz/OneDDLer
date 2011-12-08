@@ -31,19 +31,19 @@ def initialize(config):
             exit(-1)
         config.set('General', 'IDMPath', pathi)
 
-    #Get default download path, root folder for downloads
-    try:
-        pathd = config.get('General', 'DefDownloadPath')
-    except ConfigParser.NoOptionError:
-        pathd = ''
-    if pathd.strip() == '':
-        print 'Please enter the default download path (eg: D:/Lol/Crap/)'
-        pathd = raw_input('--> ')
-        logging.debug('Received default download path => %s' % pathd)
-        
-    while pathd.rfind('/') == len(pathd)-1 or pathd.rfind('\\') == len(pathd)-1:
-        pathd = pathd[:len(pathd)-1]
-    config.set('General', 'DefDownloadPath', pathd)
+#Get default download path, root folder for downloads
+##    try:
+##        pathd = config.get('General', 'DefDownloadPath')
+##    except ConfigParser.NoOptionError:
+##        pathd = ''
+##    if pathd.strip() == '':
+##        print 'Please enter the default download path (eg: D:/Lol/Crap/)'
+##        pathd = raw_input('--> ')
+##        logging.debug('Received default download path => %s' % pathd)
+##        
+##    while pathd.rfind('/') == len(pathd)-1 or pathd.rfind('\\') == len(pathd)-1:
+##        pathd = pathd[:len(pathd)-1]
+##    config.set('General', 'DefDownloadPath', pathd)
 
     try:
         value = config.get('General', 'DefQuality')
@@ -72,15 +72,18 @@ def initialize(config):
         config.set('General', 'ne_rss', url)
 
     try:
-        value = config.get('General', 'main_folder')
+        main_folder = config.get('General', 'main_folder')
     except ConfigParser.NoOptionError:
-        value = ''
-    if value.strip() == '':
-        print 'Enter your main folder which contains all the tv shows folder:'
+        main_folder = ''
+    if main_folder.strip() == '':
+        print 'Enter your main folder where you store or would like to store your TV Shows:'
         main_folder = raw_input(' >> ')
-        config.set('General', 'main_folder', main_folder)
         logging.debug('User chose a main_folder path.')
 
+    while main_folder.rfind('/') == len(main_folder)-1 or main_folder.rfind('\\') == len(main_folder)-1:
+        main_folder = main_folder[:len(main_folder)-1]
+        config.set('General', 'main_folder', main_folder)
+        
     logging.debug('Done initializing')
 
 def parseShowsConfig(xConfig):
@@ -101,12 +104,12 @@ def parseShowsConfig(xConfig):
         try:
             pathtd = xConfig.get(show, 'PathToDownload')
         except ConfigParser.NoOptionError:
-            pathtd = '/'.join([xConfig.get('General', 'DefDownloadPath'), show, ''])
+            pathtd = '/'.join([xConfig.get('General', 'main_folder'), show, ''])
 
-        #logging.debug('Download path for %s is %s' % (show, pathtd))
+        logging.debug('Download path for %s is %s' % (show, pathtd))
         xConfig.set(show, 'PathToDownload', pathtd)    
         showDic[show] = {'Season' : season, 'Episode': episode, 'Quality' : quality, 'Path' : pathtd.replace('\\', '/')}
-    print 'Loaded %d shows from config.' % len(showDic.keys())
+
     logging.debug('Parsing shows: completed')
     return showDic
 
@@ -115,15 +118,14 @@ def parseShowsRss(xConfig, rss_feed):
     dict_r = {}
     reg = re.compile('(\\d+)x(\\d+)')
     dirManager = FolderManagment(xConfig.get('General', 'main_folder'))
-    cnt = 0
     
     for item in rss_feed.getElementsByTagName('item'):
         for node in item.childNodes:
             if node.nodeName == 'title':
                 index = node.firstChild.wholeText.find('-')
                 if index != -1:
-                    title = node.firstChild.wholeText[:index].strip()
-                    title = ' '.join([x.capitalize() for x in title.split(' ')]).replace('\'', '').replace(':', '')
+                    title = node.firstChild.wholeText[:index].replace('\'', '').replace(':', '').replace('(','').replace(')','').strip()
+                    title = ' '.join([x.capitalize() for x in title.split(' ')]).strip()
                     logging.debug('Found show in watchlist: %s' % title)
                 else:
                     break
@@ -131,7 +133,7 @@ def parseShowsRss(xConfig, rss_feed):
                     logging.debug('Show already exists in config: %s, skipping...' % title)
                     break
                 
-                logging.debug('Adding show from watchlist to config : %s' % title)
+                #logging.debug('Adding show from watchlist to config : %s' % title)
                 xConfig.add_section(title)
                 
             if node.nodeName == 'description':
@@ -143,14 +145,12 @@ def parseShowsRss(xConfig, rss_feed):
                 season = int(match.group(1))
                 episode = int(match.group(2))
 
-                logging.debug('Parsed show "%s" from RSS: Episode %d, Season %d' % (title, episode, season))
+                #logging.debug('Parsed show "%s" from RSS: Episode %d, Season %d' % (title, episode, season))
                 xConfig.set(title, 'Season', str(season))
                 xConfig.set(title, 'Episode', str(episode-1))
                 xConfig.set(title, 'Quality', xConfig.get('General', 'defquality'))
                 xConfig.set(title, 'pathtodownload', dirManager.get_folder(title))
-                cnt = cnt + 1
                 break
-    print 'Loaded %d shows from Next-Episode.' % cnt
     logging.debug('Parsing NE RSS: completed')
             
 def fetchLinks(content):
@@ -169,7 +169,7 @@ def fetchLinks(content):
                     
                     for title in titles:
                         links = []
-                        logging.debug('OneDDL.com release: %s' % title)
+                        #logging.debug('OneDDL.com release: %s' % title)
                         
                         matchi = reggi.search(linksContent)
                         if matchi == None:
@@ -179,7 +179,7 @@ def fetchLinks(content):
                         for match in matchers:
                             links.append(match.group(1))
 
-                        logging.debug('Links for %s: %s' % (title, links))
+                        #logging.debug('Links for %s: %s' % (title, links))
                         dict_r[title.strip()] = links
                         linksContent = linksContent[matchi.end():]
 
@@ -187,7 +187,7 @@ def fetchLinks(content):
     return dict_r
 
 def parseTitle(title):
-    logging.debug('Parsing release %s fetched from OneDDL' % title)
+    #logging.debug('Parsing release %s fetched from OneDDL' % title)
     tvregex = re.compile('(?P<show>.*)S(?P<season>[0-9]{2})E(?P<episode>[0-9]{2}).(?P<quality>.*)[\.-]',re.IGNORECASE)
     matobj = tvregex.match(title)
     if matobj is None:
@@ -258,8 +258,7 @@ if __name__ == '__main__':
         content = parseString(content)
         parseShowsRss(config, content)
     except:
-        logging.debug('exception at %s' % __name__)
-        pass
+        logging.debug('exception at %s: %s' % (__name__, exc_info()))
     
     #Parse TV Shows
     showDic = parseShowsConfig(config)
