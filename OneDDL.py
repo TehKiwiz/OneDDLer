@@ -6,7 +6,8 @@ from xml.dom.minidom import parse, parseString
 import logging
 import os
 import re
-import httplib2
+#import httplib2
+import requests
 import ConfigParser
 import _winreg
 import codecs
@@ -122,7 +123,8 @@ def parseShowsRss(xConfig, rss_feed):
     for item in rss_feed.getElementsByTagName('item'):
         for node in item.childNodes:
             if node.nodeName == 'title':
-                index = node.firstChild.wholeText.find('-')
+                #Needs to be rfind since find won't work for 'Hawaii Five-0 - Today'
+                index = node.firstChild.wholeText.rfind('-')
                 if index != -1:
                     title = node.firstChild.wholeText[:index].replace('\'', '').replace(':', '').replace('(','').replace(')','').strip()
                     title = ' '.join([x.capitalize() for x in title.split(' ')]).strip()
@@ -195,6 +197,8 @@ def parseTitle(title):
         return None
     (name, season, episode, quality) = matobj.groups()
     name = name.replace('.', ' ').replace('repack', '').replace('proper', '').strip().lower()
+    #Need to remove the '2010' from 'Hawaii Five-0 2010'
+    name = re.sub('\s?\d{4}\s?', '', name).strip()
     quality = quality.lower()
     logging.debug('Parsed OneDDL release %s: Name "%s", Season "%s", Episode "%s", Quality "%s"' % (title, name, season, episode, quality))
     return (name, season, episode, quality)
@@ -247,14 +251,13 @@ if __name__ == '__main__':
     config = ConfigParser.SafeConfigParser()
     #Set ini file to its initial state
     initialize(config)
-    h = httplib2.Http()
 
     #check for next-episode rss in cfg
     try:
         neRss = config.get('General', 'ne_rss')
         if neRss == 'false':
             raise
-        resp, content = h.request(neRss, 'GET')
+        content = requests.get(neRss).content
         content = parseString(content)
         parseShowsRss(config, content)
     except:
@@ -264,10 +267,16 @@ if __name__ == '__main__':
     showDic = parseShowsConfig(config)
 
     try:
-        resp, content = h.request("http://www.oneddl.com/feed/rss/", "GET")
-        newcontent = parseString(content)
+        url = "http://www.oneddl.com/feed/rss/"
+        if len(argv) == 3:
+            custom = argv[1].strip()
+            if custom == '-f' or custom == '--feed':
+                url = argv[2].strip()
+                logging.debug('User chose a custom feed URL: %s' % url)
+        content = requests.get(url).content
+        newcontent = parseString(content.encode( "utf-8" ))
         linksdict = fetchLinks(newcontent)
-    except httplib2.HttpLib2Error:
+    except requests.RequestException:
         logging.exception('Something went wrong fetching a page')
 
     print '%d downloads found.' % len(linksdict)
@@ -278,10 +287,12 @@ if __name__ == '__main__':
     for title, links in linksdict.iteritems():
         show, path = shouldDownload(config, showDic, title)
         if path != None and show != None:
-            updatedDict[show] = (path, links)
-    
-    print '%d matching downloads have been found.' % len(updatedDict)
-
+            if updatedDict.has_key(show):
+                logging.debug('Show already in queue dictionary. Appending links:\n%s', links)
+                [updatedDict[show][1].append(link) for link in links]
+            else:
+                updatedDict[show] = (path, links)
+            
     with open('OneDDL.ini', 'wb') as fp:
         config.write(fp)
 
